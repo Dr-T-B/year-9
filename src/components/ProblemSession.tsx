@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ChemSkill } from '../hooks/useChemSkills'
 import { useProgress, type Confidence } from '../hooks/useProgress'
+import { useMathsProgress } from '../hooks/useMathsProgress'
 import { ProblemCard } from './ProblemCard'
 
 interface Problem {
@@ -36,7 +37,10 @@ export function ProblemSession({ skill, difficulty, count, subject, onDone, onBa
   const [results, setResults] = useState<SessionResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { saveAttempt, saving } = useProgress()
+  const { saveAttempt: saveChemAttempt, saving: chemSaving } = useProgress()
+  const { saveAttempt: saveMathsAttempt, saving: mathsSaving } = useMathsProgress()
+  const saveAttempt = subject === 'maths' ? saveMathsAttempt : saveChemAttempt
+  const saving = subject === 'maths' ? mathsSaving : chemSaving
 
   useEffect(() => {
     const load = async () => {
