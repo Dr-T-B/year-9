@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { ChemSkill } from '../hooks/useChemSkills'
 
 type Difficulty = 'foundation' | 'standard' | 'stretch'
@@ -36,6 +36,23 @@ export function SessionConfig({ skill, onStart, onBack }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>('standard')
   const [count, setCount] = useState(5)
 
+  const difficultyRef = useRef<Difficulty>('standard')
+  const countRef = useRef(5)
+
+  const handleDifficulty = (d: Difficulty) => {
+    setDifficulty(d)
+    difficultyRef.current = d
+  }
+
+  const handleCount = (n: number) => {
+    setCount(n)
+    countRef.current = n
+  }
+
+  const handleStart = () => {
+    onStart(difficultyRef.current, countRef.current)
+  }
+
   return (
     <div className="p-4 max-w-lg mx-auto">
       <button
@@ -58,7 +75,7 @@ export function SessionConfig({ skill, onStart, onBack }: Props) {
         {DIFFICULTIES.map(d => (
           <button
             key={d.value}
-            onClick={() => setDifficulty(d.value)}
+            onClick={() => handleDifficulty(d.value)}
             className={`w-full text-left p-3 rounded-lg border-2 transition-all
               ${difficulty === d.value ? d.colour : 'border-gray-200 bg-white text-gray-700'}`}
           >
@@ -73,7 +90,7 @@ export function SessionConfig({ skill, onStart, onBack }: Props) {
         {COUNTS.map(n => (
           <button
             key={n}
-            onClick={() => setCount(n)}
+            onClick={() => handleCount(n)}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-all
               ${count === n
                 ? 'bg-gray-800 border-gray-800 text-white'
@@ -85,7 +102,7 @@ export function SessionConfig({ skill, onStart, onBack }: Props) {
       </div>
 
       <button
-        onClick={() => onStart(difficulty, count)}
+        onClick={handleStart}
         className="w-full py-4 bg-gray-900 text-white rounded-xl font-semibold
                    text-base hover:bg-gray-700 active:scale-95 transition-all"
       >
