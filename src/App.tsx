@@ -1,12 +1,14 @@
 import { useAuth } from './hooks/useAuth'
 import { useChemSkills } from './hooks/useChemSkills'
 import { useMathsSkills } from './hooks/useMathsSkills'
+import { useReviewDue } from './hooks/useReviewDue'
 import { SubjectSelector } from './components/SubjectSelector'
 import { TopicSelector } from './components/TopicSelector'
 import { SkillSelector } from './components/SkillSelector'
 import { SessionConfig } from './components/SessionConfig'
 import { ProblemSession } from './components/ProblemSession'
 import { SessionSummary } from './components/SessionSummary'
+import { ReviewDashboard } from './components/ReviewDashboard'
 import type { TopicGroup, ChemSkill } from './hooks/useChemSkills'
 import type { SubjectGroup } from './lib/topics'
 import { TOPIC_META } from './lib/topics'
@@ -22,6 +24,7 @@ interface SessionResult {
 
 type Screen =
   | { name: 'subject-select' }
+  | { name: 'review-dashboard' }
   | { name: 'topics' }
   | { name: 'skills'; topic: TopicGroup }
   | { name: 'config'; topic: TopicGroup; skill: ChemSkill }
@@ -32,6 +35,7 @@ export default function App() {
   const { session, loading: authLoading } = useAuth()
   const { topics: chemTopics, loading: chemLoading, error: chemError } = useChemSkills()
   const { topics: mathsTopics, groups: mathsGroups, loading: mathsLoading, error: mathsError } = useMathsSkills()
+  const reviewDue = useReviewDue()
   const [screen, setScreen] = useState<Screen>({ name: 'subject-select' })
   const [subject, setSubject] = useState<Subject | null>(null)
 
@@ -122,7 +126,35 @@ export default function App() {
       {/* Screens */}
       <div className="py-4">
         {screen.name === 'subject-select' && (
-          <SubjectSelector onSelect={handleSubjectSelect} />
+          <SubjectSelector
+            onSelect={handleSubjectSelect}
+            reviewCount={reviewDue.totalDue}
+            onReviewTap={() => setScreen({ name: 'review-dashboard' })}
+          />
+        )}
+
+        {screen.name === 'review-dashboard' && (
+          <ReviewDashboard
+            dueSkills={reviewDue.dueSkills}
+            onBack={() => setScreen({ name: 'subject-select' })}
+            onPractice={(skillId, subj) => {
+              setSubject(subj)
+              const allTopics = subj === 'maths' ? mathsTopics : chemTopics
+              let foundSkill: ChemSkill | undefined
+              let foundTopic: TopicGroup | undefined
+              for (const topic of allTopics) {
+                const skill = topic.skills.find(s => s.id === skillId)
+                if (skill) {
+                  foundSkill = skill
+                  foundTopic = topic
+                  break
+                }
+              }
+              if (foundSkill && foundTopic) {
+                setScreen({ name: 'config', topic: foundTopic, skill: foundSkill })
+              }
+            }}
+          />
         )}
 
         {screen.name === 'topics' && (
