@@ -1,13 +1,18 @@
 import { useAuth } from './hooks/useAuth'
 import { useChemSkills } from './hooks/useChemSkills'
+import { useMathsSkills } from './hooks/useMathsSkills'
+import { SubjectSelector } from './components/SubjectSelector'
 import { TopicSelector } from './components/TopicSelector'
 import { SkillSelector } from './components/SkillSelector'
 import { SessionConfig } from './components/SessionConfig'
 import { ProblemSession } from './components/ProblemSession'
 import { SessionSummary } from './components/SessionSummary'
 import type { TopicGroup, ChemSkill } from './hooks/useChemSkills'
+import type { SubjectGroup } from './lib/topics'
+import { TOPIC_META } from './lib/topics'
 import { useState } from 'react'
 
+type Subject = 'chemistry' | 'maths'
 type Difficulty = 'foundation' | 'standard' | 'stretch'
 
 interface SessionResult {
@@ -16,6 +21,7 @@ interface SessionResult {
 }
 
 type Screen =
+  | { name: 'subject-select' }
   | { name: 'topics' }
   | { name: 'skills'; topic: TopicGroup }
   | { name: 'config'; topic: TopicGroup; skill: ChemSkill }
@@ -24,14 +30,19 @@ type Screen =
 
 export default function App() {
   const { session, loading: authLoading } = useAuth()
-  const { topics, loading: skillsLoading, error } = useChemSkills()
-  const [screen, setScreen] = useState<Screen>({ name: 'topics' })
+  const { topics: chemTopics, loading: chemLoading, error: chemError } = useChemSkills()
+  const { topics: mathsTopics, groups: mathsGroups, loading: mathsLoading, error: mathsError } = useMathsSkills()
+  const [screen, setScreen] = useState<Screen>({ name: 'subject-select' })
+  const [subject, setSubject] = useState<Subject | null>(null)
 
-  if (authLoading || skillsLoading) {
+  const loading = authLoading || chemLoading || mathsLoading
+  const error = chemError ?? mathsError
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-5xl mb-4 animate-pulse">⚗️</div>
+          <div className="text-5xl mb-4 animate-pulse">📚</div>
           <p className="text-gray-400 text-sm">Loading…</p>
         </div>
       </div>
@@ -63,15 +74,45 @@ export default function App() {
     )
   }
 
+  // Convert chemistry TopicGroup[] → SubjectGroup[] for generic TopicSelector
+  const chemGroups: SubjectGroup[] = chemTopics.map(t => ({
+    id: String(t.topic_num),
+    name: `Topic ${t.topic_num}: ${t.topic_name}`,
+    colour: TOPIC_META[t.topic_num]?.colour ?? 'bg-gray-500',
+    icon: TOPIC_META[t.topic_num]?.icon ?? '🔬',
+    skillCount: t.skills.length,
+  }))
+
+  const activeGroups = subject === 'maths' ? mathsGroups : chemGroups
+  const activeTopics = subject === 'maths' ? mathsTopics : chemTopics
+
+  function handleSubjectSelect(s: Subject) {
+    setSubject(s)
+    setScreen({ name: 'topics' })
+  }
+
+  function handleTopicSelect(group: SubjectGroup) {
+    const topic = activeTopics.find(t =>
+      subject === 'maths'
+        ? t.topic_name === group.id
+        : String(t.topic_num) === group.id
+    )
+    if (topic) setScreen({ name: 'skills', topic })
+  }
+
+  const safeSubject = subject ?? 'chemistry'
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <span className="text-2xl">⚗️</span>
+          <span className="text-2xl">
+            {subject === 'maths' ? '🧮' : '⚗️'}
+          </span>
           <div>
             <h1 className="text-base font-bold text-gray-900 leading-none">
-              Year 9 Chemistry
+              {subject === 'maths' ? 'Year 9 Maths' : 'Year 9 Chemistry'}
             </h1>
             <p className="text-xs text-gray-400 mt-0.5">Revision</p>
           </div>
@@ -80,16 +121,22 @@ export default function App() {
 
       {/* Screens */}
       <div className="py-4">
+        {screen.name === 'subject-select' && (
+          <SubjectSelector onSelect={handleSubjectSelect} />
+        )}
+
         {screen.name === 'topics' && (
           <TopicSelector
-            topics={topics}
-            onSelect={topic => setScreen({ name: 'skills', topic })}
+            groups={activeGroups}
+            heading={subject === 'maths' ? 'Maths' : 'Chemistry'}
+            onSelect={handleTopicSelect}
           />
         )}
 
         {screen.name === 'skills' && (
           <SkillSelector
             topic={screen.topic}
+            subject={safeSubject}
             onSelect={skill =>
               setScreen({ name: 'config', topic: screen.topic, skill })
             }
@@ -100,6 +147,7 @@ export default function App() {
         {screen.name === 'config' && (
           <SessionConfig
             skill={screen.skill}
+            subject={safeSubject}
             onStart={(difficulty, count) =>
               setScreen({
                 name: 'session',
@@ -120,6 +168,7 @@ export default function App() {
             skill={screen.skill}
             difficulty={screen.difficulty}
             count={screen.count}
+            subject={safeSubject}
             onDone={results =>
               setScreen({
                 name: 'summary',
@@ -143,9 +192,9 @@ export default function App() {
           <SessionSummary
             results={screen.results}
             skillName={screen.skill.skill_text}
+            subject={safeSubject}
             onRepeat={() => {
-              // Re-run same skill — find the topic
-              const topic = topics.find(t =>
+              const topic = activeTopics.find(t =>
                 t.skills.some(s => s.id === screen.skill.id)
               )!
               setScreen({
@@ -156,7 +205,7 @@ export default function App() {
                 count: screen.count,
               })
             }}
-            onTopics={() => setScreen({ name: 'topics' })}
+            onTopics={() => setScreen({ name: 'subject-select' })}
           />
         )}
       </div>

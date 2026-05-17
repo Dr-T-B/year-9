@@ -8,6 +8,7 @@ interface SessionResult {
 interface Props {
   results: SessionResult[]
   skillName: string
+  subject: 'chemistry' | 'maths'
   onRepeat: () => void
   onTopics: () => void
 }
@@ -24,7 +25,7 @@ const CONF_LABEL: Record<Confidence, string> = {
   green: 'Confident',
 }
 
-export function SessionSummary({ results, skillName, onRepeat, onTopics }: Props) {
+export function SessionSummary({ results, skillName, subject: _subject, onRepeat, onTopics }: Props) {
   const counts = results.reduce(
     (acc, r) => { acc[r.confidence]++; return acc },
     { red: 0, amber: 0, green: 0 } as Record<Confidence, number>

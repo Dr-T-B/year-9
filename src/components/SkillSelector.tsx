@@ -3,6 +3,7 @@ import { TOPIC_META } from '../lib/topics'
 
 interface Props {
   topic: TopicGroup
+  subject: 'chemistry' | 'maths'
   onSelect: (skill: ChemSkill) => void
   onBack: () => void
 }
@@ -16,7 +17,7 @@ const TYPE_LABEL: Record<string, string> = {
   diagram:      'Diagram',
 }
 
-export function SkillSelector({ topic, onSelect, onBack }: Props) {
+export function SkillSelector({ topic, subject, onSelect, onBack }: Props) {
   const meta = TOPIC_META[topic.topic_num]
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -30,10 +31,12 @@ export function SkillSelector({ topic, onSelect, onBack }: Props) {
       <div className={`${meta.colour} rounded-xl p-4 mb-5 flex items-center gap-3`}>
         <span className="text-3xl">{meta.icon}</span>
         <div>
-          <div className="font-bold text-white text-base">
-            Topic {topic.topic_num}
-          </div>
-          <div className="text-white/90 text-sm">{topic.topic_name}</div>
+          {subject === 'chemistry' && (
+            <div className="font-bold text-white text-base">
+              Topic {topic.topic_num}
+            </div>
+          )}
+          <div className="font-bold text-white text-base">{topic.topic_name}</div>
         </div>
       </div>
       <p className="text-sm text-gray-500 mb-3">Choose a skill</p>

@@ -19,11 +19,18 @@ interface Props {
   skill: ChemSkill
   difficulty: 'foundation' | 'standard' | 'stretch'
   count: number
+  subject: 'chemistry' | 'maths'
   onDone: (results: SessionResult[]) => void
   onBack: () => void
 }
 
-export function ProblemSession({ skill, difficulty, count, onDone, onBack }: Props) {
+const MATHS_DIFFICULTY_MAP: Record<string, string> = {
+  foundation: 'easy',
+  standard: 'medium',
+  stretch: 'hard',
+}
+
+export function ProblemSession({ skill, difficulty, count, subject, onDone, onBack }: Props) {
   const [problems, setProblems] = useState<Problem[]>([])
   const [current, setCurrent] = useState(0)
   const [results, setResults] = useState<SessionResult[]>([])
@@ -34,13 +41,17 @@ export function ProblemSession({ skill, difficulty, count, onDone, onBack }: Pro
   useEffect(() => {
     const load = async () => {
       try {
+        const apiDifficulty = subject === 'maths'
+          ? (MATHS_DIFFICULTY_MAP[difficulty] ?? difficulty)
+          : difficulty
         const res = await fetch('/api/generate-problems', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skill_ref: skill.skill_ref,
-            difficulty,
+            difficulty: apiDifficulty,
             count,
+            subject,
           }),
         })
         const data = await res.json()

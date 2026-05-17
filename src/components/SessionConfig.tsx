@@ -5,6 +5,7 @@ type Difficulty = 'foundation' | 'standard' | 'stretch'
 
 interface Props {
   skill: ChemSkill
+  subject: 'chemistry' | 'maths'
   onStart: (difficulty: Difficulty, count: number) => void
   onBack: () => void
 }
@@ -32,7 +33,7 @@ const DIFFICULTIES: { value: Difficulty; label: string; desc: string; colour: st
 
 const COUNTS = [3, 5, 10]
 
-export function SessionConfig({ skill, onStart, onBack }: Props) {
+export function SessionConfig({ skill, subject: _subject, onStart, onBack }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>('standard')
   const [count, setCount] = useState(5)
 
