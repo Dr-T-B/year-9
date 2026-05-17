@@ -102,18 +102,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // Enough cached problems — shuffle and return `count` of them
     const selected = shuffleArray(cached).slice(0, count)
 
-    // Increment times_served in the background (fire and forget)
+    // Fire-and-forget atomic increment — does not block the response
     const selectedIds = selected.map(p => p.id)
-    supabase
-      .from('chem_problems')
-      .update({ times_served: 0 })   // placeholder — real increment below
-      .in('id', selectedIds)
-      .then(() => {
-        // Use rpc for atomic increment if available, else skip
-        selectedIds.forEach(id => {
-          supabase.rpc('increment_times_served', { problem_id: id }).then(() => {})
-        })
-      })
+    selectedIds.forEach(id => {
+      supabase.rpc('increment_times_served', { problem_id: id }).catch(() => {})
+    })
 
     return jsonResponse({
       problems: selected.map(p => ({

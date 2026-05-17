@@ -28,3 +28,4 @@ supabase/.temp/
 
 # Local Netlify folder
 .netlify
+deno.lock
