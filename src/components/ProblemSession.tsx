@@ -3,6 +3,7 @@ import type { ChemSkill } from '../hooks/useChemSkills'
 import { useProgress, type Confidence } from '../hooks/useProgress'
 import { useMathsProgress } from '../hooks/useMathsProgress'
 import { ProblemCard } from './ProblemCard'
+import { SkillTipCard } from './SkillTipCard'
 
 interface Problem {
   question: string
@@ -14,6 +15,11 @@ interface Problem {
 interface SessionResult {
   confidence: Confidence
   nextReview: Date | null
+}
+
+interface TipData {
+  common_error: string
+  concept: string
 }
 
 interface Props {
@@ -31,12 +37,17 @@ const MATHS_DIFFICULTY_MAP: Record<string, string> = {
   stretch: 'hard',
 }
 
+const RED_THRESHOLD = 3
+
 export function ProblemSession({ skill, difficulty, count, subject, onDone, onBack }: Props) {
   const [problems, setProblems] = useState<Problem[]>([])
   const [current, setCurrent] = useState(0)
   const [results, setResults] = useState<SessionResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [redCount, setRedCount] = useState(0)
+  const [showTip, setShowTip] = useState(false)
+  const [tipData, setTipData] = useState<TipData | null>(null)
   const { saveAttempt: saveChemAttempt, saving: chemSaving } = useProgress()
   const { saveAttempt: saveMathsAttempt, saving: mathsSaving } = useMathsProgress()
   const saveAttempt = subject === 'maths' ? saveMathsAttempt : saveChemAttempt
@@ -68,7 +79,20 @@ export function ProblemSession({ skill, difficulty, count, subject, onDone, onBa
       }
     }
     load()
-  }, [skill.skill_ref, difficulty, count])
+  }, [skill.skill_ref, difficulty, count, subject])
+
+  // Prefetch tip data so it's ready if the threshold is reached
+  useEffect(() => {
+    const fetchTip = async () => {
+      try {
+        const res = await fetch(
+          `/api/skill-tips?skill_ref=${encodeURIComponent(skill.skill_ref)}&subject=${subject}`
+        )
+        if (res.ok) setTipData(await res.json())
+      } catch { /* non-fatal — session continues without tips */ }
+    }
+    fetchTip()
+  }, [skill.skill_ref, subject])
 
   const handleRate = useCallback(async (confidence: Confidence) => {
     const nextReview = await saveAttempt({
@@ -80,13 +104,39 @@ export function ProblemSession({ skill, difficulty, count, subject, onDone, onBa
     const newResults = [...results, newResult]
     setResults(newResults)
 
-    if (current + 1 >= problems.length) {
-      // Short delay so the save confirmation shows
+    const isLast = current + 1 >= problems.length
+
+    if (confidence === 'red') {
+      const newRedCount = redCount + 1
+      setRedCount(newRedCount)
+
+      // Show tip after RED_THRESHOLD consecutive reds, but only mid-session
+      if (newRedCount >= RED_THRESHOLD && tipData && !isLast) {
+        setShowTip(true)
+        return
+      }
+    } else {
+      // Green or amber: clear the consecutive red streak
+      setRedCount(0)
+    }
+
+    if (isLast) {
       setTimeout(() => onDone(newResults), 600)
     } else {
       setTimeout(() => setCurrent(c => c + 1), 400)
     }
-  }, [current, problems.length, results, saveAttempt, skill.id, onDone])
+  }, [current, problems.length, results, redCount, tipData, saveAttempt, skill.id, onDone])
+
+  const handleDismissTip = useCallback(() => {
+    setShowTip(false)
+    setRedCount(0)
+    const isLast = current + 1 >= problems.length
+    if (isLast) {
+      onDone(results)
+    } else {
+      setTimeout(() => setCurrent(c => c + 1), 300)
+    }
+  }, [current, problems.length, results, onDone])
 
   if (loading) {
     return (
@@ -113,6 +163,16 @@ export function ProblemSession({ skill, difficulty, count, subject, onDone, onBa
           </button>
         </div>
       </div>
+    )
+  }
+
+  if (showTip && tipData) {
+    return (
+      <SkillTipCard
+        tipData={tipData}
+        subject={subject}
+        onDismiss={handleDismissTip}
+      />
     )
   }
 

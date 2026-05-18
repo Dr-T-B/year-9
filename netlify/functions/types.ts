@@ -25,3 +25,8 @@ export interface ErrorResponse {
   error: string
   detail?: string
 }
+
+export interface SkillTipResponse {
+  common_error: string
+  concept: string
+}
